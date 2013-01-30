@@ -1,0 +1,365 @@
+Director {
+  Name = <%= @node[:hostname] %>-dir
+  DIRport = 9101
+  QueryFile = "/etc/bacula/query.sql"
+  WorkingDirectory = "/var/lib/bacula"
+  PidDirectory = "/var/run/bacula"
+  Maximum Concurrent Jobs = 100
+  Password = "YourPassword"         # Console password
+  Messages = <%= @node[:hostname] %>-Msg
+  Heartbeat Interval = 60
+}
+
+#JobDefs {
+#  Name = "backup00-weekly"
+#  Type = Backup
+#  Level = Incremental
+#  Client = backup00-fd
+#  FileSet = "Full Set"
+#  Schedule = "WeeklyCycle"
+#  Storage = File
+#  Messages = Standard
+#  Pool = Default
+#  Priority = 10
+#}
+
+#
+# Define the main nightly save backup job
+#   By default, this job will back up to disk in
+#Job {
+#  Name = "backup00-job"
+#  JobDefs = "backup00-weekly"
+#  Write Bootstrap = "/var/lib/bacula/backup00.bsr"
+#}
+
+ #Backup the catalog database (after the nightly save)
+#Job {
+#  Name = "backup00-catalog"
+#  JobDefs = "backup00-weekly"
+#  Level = Full
+#  FileSet="Catalog"
+#  Schedule = "WeeklyCycleAfterBackup"
+  # This creates an ASCII copy of the catalog
+  # WARNING!!! Passing the password via the command line is insecure.
+  # see comments in make_catalog_backup for details.
+  # Arguments to make_catalog_backup are:
+  #  make_catalog_backup <database-name> <user-name> <password> <host>
+#  RunBeforeJob = "/usr/lib64/bacula/make_catalog_backup bacula bacula Byrfgcekzwbz12"
+  # This deletes the copy of the catalog
+#  RunAfterJob  = "/usr/lib64/bacula/delete_catalog_backup"
+#  Write Bootstrap = "/var/lib/bacula/BackupCatalog.bsr"
+#  Priority = 11                   # run after main backup
+#}
+
+#
+# Standard Restore template, to be changed by Console program
+#  Only one such job is needed for all Jobs/Clients/Storage ...
+#
+#Job {
+#  Name = "backup00-restore"
+#  Type = Restore
+#  Client = backup00-fd
+#  FileSet="Full Set"
+#  Storage = File
+#  Pool = Default
+#  Messages = Standard
+##  Where = /bacula-restores
+#}
+
+# List of files to be backed up
+#FileSet {
+#  Name = "Full Set"
+#  Include {
+##    Options {
+#      signature = MD5
+#    }
+#
+#  Files or directories for backup
+#
+#    File = /usr/src/packages/BUILD/bacula-3.0.1
+#  }
+#
+#
+# If you backup the root directory, the following two excluded
+#   files can be useful
+#
+#  Exclude {
+#    File = /proc
+#    File = /tmp
+#    File = /.journal
+#    File = /.fsck
+#  }
+#}
+
+#
+# When to do the backups, full backup on first sunday of the month,
+#  differential (i.e. incremental since full) every other sunday,
+#  and incremental backups other days
+Schedule {
+  Name = "WeeklyCycle"
+  Run = Full 1st sun at 23:05
+  Run = Differential 2nd-5th sun at 23:05
+  Run = Incremental mon-sat at 23:05
+}
+
+# This schedule does the catalog. It starts after the WeeklyCycle
+Schedule {
+  Name = "WeeklyCycleAfterBackup"
+  Run = Full sun-sat at 23:10
+}
+
+# This is the backup of the catalog
+FileSet {
+  Name = "Catalog"
+  Include {
+    Options {
+      signature = MD5
+    }
+    File = /var/lib/bacula/bacula.sql
+  }
+}
+
+# Client (File Services) to backup
+Client {
+  Name = backup00-fd
+  Address = backup00.yoursite.local
+  FDPort = 9102
+  Catalog = MyCatalog
+  Password = "YourPassword"          # password for FileDaemon
+  File Retention = 30 days            # 30 days
+  Job Retention = 6 months            # six months
+  AutoPrune = yes                     # Prune expired Jobs/Files
+}
+
+# Definition of file storage device
+Storage {
+  Name = File-backup00
+# Do not use "localhost" here
+  Address = backup00.yoursite.local  # N.B. Use a FQDN here
+  SDPort = 9103
+  Password = "YourPassword"
+  Device = FileStorage-backup00
+  Media Type = File-backup00
+}
+
+# Generic catalog service
+Catalog {
+  Name = MyCatalog
+# Uncomment the following line if you want the dbi driver
+# dbdriver = "dbi:mysql"; dbaddress = 127.0.0.1; dbport =
+  dbname = "bacula"; dbuser = "bacula"
+#; dbpassword = "DB-Password"
+}
+
+# Reasonable message delivery -- send most everything to email address
+#  and to the console
+#Messages {
+#  Name = Standard
+#
+# NOTE! If you send to two email or more email addresses, you will need
+#  to replace the %r in the from field (-f part) with a single valid
+#  email address in both the mailcommand and the operatorcommand.
+#  What this does is, it sets the email address that emails would display
+#  in the FROM field, which is by default the same email as they're being
+#  sent to.  However, if you send email to more than one address, then
+#  you'll have to set the FROM address manually, to a single address.
+#  for example, a 'no-reply@mydomain.com', is better since that tends to
+#  tell (most) people that its coming from an automated source.
+
+#
+#  mailcommand = "/usr/sbin/bsmtp -h localhost -f \"\(Bacula\) \<\\%r\>\" -s \"Bacula: %t %e of %c %l\" %r"
+#  operatorcommand = "/usr/sbin/bsmtp -h localhost -f \"\(Bacula\) \<\\%r\>\" -s \"Bacula: Intervention needed for %j\" %r"
+#  mail = root@localhost = all, !skipped
+#  operator = root@localhost = mount
+#  console = all, !skipped, !saved
+#
+# WARNING! the following will create a file that you must cycle from
+#          time to time as it will grow indefinitely. However, it will
+#          also keep all your messages if they scroll off the console.
+#
+#  append = "/var/lib/bacula/log" = all, !skipped
+#}
+
+# Message delivery for daemon messages (no job).
+Messages {
+  Name                          = <%= @node[:hostname] %>-Msg
+  mailcommand                   = "/usr/sbin/bsmtp -h localhost -f \"\(Bacula: %d\) \<no-reply@email.com\>\" -s \"Bacula: %t %e of %c %l\" %r"
+  operatorcommand               = "/usr/sbin/bsmtp -h localhost -f \"\(Bacula: %d\) \<no-reply@email.com\>\" -s \"Bacula: Intervention needed for %j\" %r"
+  MailOnError                   = your@email.com = all, !skipped
+  MailOnSuccess                 = your@email.com = all, !skipped
+  operator                      = your@email.com = mount, terminate, alert
+#  console                       = all, !skipped, !saved, !restored
+  append                        = "/var/log/bacula.log" = all, !skipped
+#  syslog                        = all, !skipped, !saved, !restored
+#  catalog                       = all, !skipped
+}
+
+Messages {
+  Name                          = Standard
+  mailcommand                   = "/usr/sbin/bsmtp -h localhost -f \"\(Bacula: %d\) \<no-reply@email.com\>\" -s \"Bacula: %t %e of %c %l\" %r"
+  operatorcommand               = "/usr/sbin/bsmtp -h localhost -f \"\(Bacula: %d\) \<no-reply@email.com\>\" -s \"Bacula: Intervention needed for %j\" %r"
+  MailOnError                   = your@email.com = all, !skipped
+  MailOnSuccess                 = your@email.com = all, !skipped
+  operator                      = your@email.com = mount, terminate, alert
+#  console                       = all, !skipped, !saved, !restored
+  append                        = "/var/log/bacula.log" = all, !skipped
+#  syslog                        = all, !skipped, !saved, !restored
+#  catalog                       = all, !skipped
+}
+# Default pool definition
+Pool {
+  Name = Default
+  Pool Type = Backup
+  Recycle = yes                       # Bacula can automatically recycle Volumes
+  AutoPrune = yes                     # Prune expired volumes
+  VolumeRetention = 365 days         # one year
+}
+
+# Scratch pool definition
+Pool {
+  Name = Scratch
+  Pool Type = Backup
+}
+
+#
+# Restricted console used by tray-monitor to get the status of the director
+#
+Console {
+  Name = backup00-mon
+  Password = "monitor-passwrod"
+  CommandACL = status, .status
+}
+
+<% @clients.each do |client| -%>
+Job {
+  Name				= <%= client[:hostname] %> # Job name.
+  Type 				= Backup				# Job type.
+  Level 			= Incremental				# Job level. (Base | Full | Incremental | Differential | Since)
+  Write Bootstrap 		= "/var/lib/bacula/<%= client[:hostname] %>.bsr"		# Full path to bootstrap file.
+  Client 			= <%= client[:hostname] %>-fd # Client FD name.
+  FileSet 			= <%= client[:hostname] %> # Fileset used for copying.
+  Messages 			= <%= client[:hostname] %>-Msg
+  Pool 				= <%= client[:hostname] %>-daily
+  Full Backup Pool 		= <%= client[:hostname] %>-weekly
+  Incremental Backup Pool 	= <%= client[:hostname] %>-daily
+  Schedule		 	= <%= client[:hostname] %>-sched
+  Storage 			= File-<%= client[:hostname] %>
+  <% client['bacula-fd'].to_hash['client_scripts'].each do |s| -%>
+  ClientRunBeforeJob            = "<%= s %>"
+  <% end -%>
+  <% if client['bacula-fd']['run_scripts'] -%>
+  <% client['bacula-fd']['run_scripts'].each do |name, scripts| -%>
+  RunScript {
+    <% scripts.each_pair do |directive, variable| -%>
+    <%= directive %> = <%= variable %>
+    <% end -%>
+  }
+  <% end -%>
+  <% end -%>
+}
+
+Job {
+  Name 				= <%= client[:hostname] %>-Restore
+  Type 				= Restore
+  Client 			= <%= client[:hostname] %>-fd
+  FileSet 			= <%= client[:hostname] %>
+  Storage 			= File-<%= client[:hostname] %>
+  Messages 			= Standard
+  Pool 				= <%= client[:hostname] %>-daily
+}
+
+
+FileSet {
+  Name 				= <%= client[:hostname] %>
+  Include {
+
+    Options {
+      ignorecase 		= yes
+      compression 		= GZIP
+      signature 		= MD5
+      onefs 			= yes
+      noatime 			= yes
+      checkfilechanges 		= <%= client[:'bacula-fd'][:checkfilechanges] || "yes" %>
+    }
+    <% client['bacula-fd'].to_hash['include_files'].each do |f| -%>
+    File 			= <%= f %>
+    <% end -%>
+  }
+
+  Exclude {
+    <% client['bacula-fd'].to_hash['exclude_files'].each do |f| -%>
+    File 			= <%= f %>
+    <% end -%>
+  }
+}
+
+Schedule {
+  Name 				= <%= client[:hostname] %>-sched
+  Run = Level=Full Pool=<%= client[:hostname] %>-weekly <%= client[:'bacula-fd'][:schedule][:full] %> at <%= client[:'bacula-fd'][:schedule][:time] %>
+  Run = Level=Incremental Pool=<%= client[:hostname] %>-daily <%= client[:'bacula-fd'][:schedule][:incremental] %> at <%= client[:'bacula-fd'][:schedule][:time] %>
+}
+
+Client {
+  Name 				= <%= client[:hostname] %>-fd
+  Address 			= <%= client[:fqdn] %>
+  FDPort 			= 9102
+  Catalog 			= MyCatalog
+  Password 			= "YourPassword"
+  AutoPrune 			= yes
+  File Retention 		= 30 days
+  Job Retention 		= 6 month
+}
+
+Storage {
+  Name 				= File-<%= client[:hostname] %>
+  Address 			= backup02.yoursite.ru		# FQDN FS
+  SDPort 			= 9103
+  Password 			= "YourPassword"
+  Device 			= FileStorage-<%= client[:hostname] %>
+  Media Type 			= File-<%= client[:hostname] %>
+}
+
+Pool {
+  Name 				= <%= client[:hostname] %>-weekly				# Pool name.
+  Pool Type 			= Backup
+  Maximum Volumes 		= 2
+  Use Volume Once 		= yes
+  Recycle 			= yes
+  AutoPrune 			= yes
+  VolumeRetention 		= 6 days
+  Label Format 			= "<%= client[:hostname] %>-weekly"
+  Purge Oldest Volume		= yes
+}
+
+Pool {
+  Name 				= <%= client[:hostname] %>-daily
+  Pool Type 			= Backup
+  Maximum Volumes 		= 12
+  Use Volume Once 		= yes
+  Recycle 			= yes
+  AutoPrune 			= yes
+  VolumeRetention 		= 6 days
+  Label Format 			= "<%= client[:hostname] %>-daily"
+  Purge Oldest Volume         = yes
+}
+
+
+Messages {
+  Name 				= <%= client[:hostname] %>-Msg
+  mailcommand 			= "/usr/sbin/bsmtp -h localhost -f \"\(Bacula: %d\) \<no-reply@email.com\>\" -s \"Bacula: %t %e of %c %l\" %r"
+  operatorcommand 		= "/usr/sbin/bsmtp -h localhost -f \"\(Bacula: %d\) \<no-reply@email.com\>\" -s \"Bacula: Intervention needed for %j\" %r"
+  MailOnError 			= your@email.com = all, !skipped
+  MailOnSuccess 		= your@email.com = all, !skipped
+  operator 			= your@email.com = mount, terminate, alert
+#  console 			= all, !skipped, !saved, !restored
+  append 			= "/var/log/bacula.log" = all, !skipped
+#  syslog 			= all, !skipped, !saved, !restored
+#  catalog 			= all, !skipped
+}
+
+<% end -%>
+
+# BEGIN Temp while two mgmts.
+@/etc/bacula/bacula-dir-mgmt03.conf
+# END Temp while two mgmts.
+

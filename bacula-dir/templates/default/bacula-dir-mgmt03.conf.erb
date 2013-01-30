@@ -1,0 +1,128 @@
+<% @clients.each do |client| -%>
+Job {
+  Name				= <%= client['hostname'] %> # Job name.
+  Type 				= Backup				# Job type.
+  Level 			= Incremental				# Job level. (Base | Full | Incremental | Differential | Since)
+  Write Bootstrap 		= "/var/lib/bacula/<%= client['hostname'] %>.bsr"		# Full path to bootstrap file.
+  Client 			= <%= client['hostname'] %>-fd # Client FD name.
+  FileSet 			= <%= client['hostname'] %> # Fileset used for copying.
+  Messages 			= <%= client['hostname'] %>-Msg
+  Pool 				= <%= client['hostname'] %>-daily
+  Full Backup Pool 		= <%= client['hostname'] %>-weekly
+  Incremental Backup Pool 	= <%= client['hostname'] %>-daily
+  Schedule		 	= <%= client['hostname'] %>-sched
+  Storage 			= File-<%= client['hostname'] %>
+  <% client['bacula-fd']['client_scripts'].each do |s| -%>
+  ClientRunBeforeJob            = "<%= s %>"    
+  <% end -%>
+  <% if client['bacula-fd']['run_scripts'] -%>
+  <% client['bacula-fd']['run_scripts'].each do |name, scripts| -%>
+  RunScript {
+    <% scripts.each_pair do |directive, variable| -%> 
+    <%= directive %> = <%= variable %>
+    <% end -%>
+  }
+  <% end -%>
+  <% end -%>
+}
+
+Job {
+  Name 				= <%= client['hostname'] %>-Restore
+  Type 				= Restore
+  Client 			= <%= client['hostname'] %>-fd
+  FileSet 			= <%= client['hostname'] %>
+  Storage 			= File-<%= client['hostname'] %>
+  Messages 			= Standard
+  Pool 				= <%= client['hostname'] %>-daily
+}
+
+
+FileSet {
+  Name 				= <%= client['hostname'] %>
+  Include {
+    
+    Options {
+      ignorecase 		= yes
+      compression 		= GZIP
+      signature 		= MD5
+      onefs 			= yes
+      noatime 			= yes
+      checkfilechanges 		= <%= client['bacula-fd']['checkfilechanges'] || "yes" %>
+    }
+    <% client['bacula-fd'].to_hash['include_files'].each do |f| -%>
+    File 			= <%= f %>
+    <% end -%>
+  }
+
+  Exclude {
+    <% client['bacula-fd'].to_hash['exclude_files'].each do |f| -%>
+    File 			= <%= f %>
+    <% end -%>
+  }
+}
+
+Schedule {
+  Name 				= <%= client['hostname'] %>-sched
+  Run = Level=Full Pool=<%= client['hostname'] %>-weekly <%= client['bacula-fd']['schedule']['full'] %> at <%= client['bacula-fd']['schedule']['time'] %>
+  Run = Level=Incremental Pool=<%= client['hostname'] %>-daily <%= client['bacula-fd']['schedule']['incremental'] %> at <%= client['bacula-fd']['schedule']['time'] %>
+}
+
+Client {
+  Name 				= <%= client['hostname'] %>-fd
+  Address 			= <%= client['fqdn'] %>
+  FDPort 			= 9102
+  Catalog 			= MyCatalog
+  Password 			= "YourPassword"
+  AutoPrune 			= yes
+  File Retention 		= 30 days
+  Job Retention 		= 6 month
+}
+
+Storage {
+  Name 				= File-<%= client['hostname'] %>
+  Address 			= backup02.yoursite.ru		# FQDN FS 
+  SDPort 			= 9103
+  Password 			= "YourPassword"
+  Device 			= FileStorage-<%= client['hostname'] %>
+  Media Type 			= File-<%= client['hostname'] %>
+}
+
+Pool {
+  Name 				= <%= client['hostname'] %>-weekly				# Pool name.
+  Pool Type 			= Backup
+  Maximum Volumes 		= 2
+  Use Volume Once 		= yes
+  Recycle 			= yes
+  AutoPrune 			= yes
+  VolumeRetention 		= 6 days
+  Label Format 			= "<%= client['hostname'] %>-weekly"
+  Purge Oldest Volume		= yes
+}
+
+Pool {
+  Name 				= <%= client['hostname'] %>-daily
+  Pool Type 			= Backup
+  Maximum Volumes 		= 12
+  Use Volume Once 		= yes
+  Recycle 			= yes
+  AutoPrune 			= yes
+  VolumeRetention 		= 6 days
+  Label Format 			= "<%= client['hostname'] %>-daily"
+  Purge Oldest Volume         = yes
+}
+
+
+Messages {
+  Name 				= <%= client['hostname'] %>-Msg
+  mailcommand 			= "/usr/sbin/bsmtp -h localhost -f \"\(Bacula: %d\) \<no-reply@yoursite.ru\>\" -s \"Bacula: %t %e of %c %l\" %r"
+  operatorcommand 		= "/usr/sbin/bsmtp -h localhost -f \"\(Bacula: %d\) \<no-reply@yoursite.ru\>\" -s \"Bacula: Intervention needed for %j\" %r"
+  MailOnError 			= support@yoursite.ru = all, !skipped
+  MailOnSuccess 		= support@yoursite.ru = all, !skipped
+  operator 			= support@yoursite.ru = mount, terminate, alert
+#  console 			= all, !skipped, !saved, !restored
+  append 			= "/var/log/bacula.log" = all, !skipped
+#  syslog 			= all, !skipped, !saved, !restored
+#  catalog 			= all, !skipped
+}
+
+<% end -%>

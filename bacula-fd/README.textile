@@ -1,0 +1,70 @@
+h1. Описание 
+
+Рецепт для установки и автоматической конфигурации bacula-fd.
+
+h1. Атрибуты
+
+Для запуска внешних скриптов нужно использовать хэш-атрибут run_scripts.
+
+Можно выставлять следующие директивы для RunScript:
+
+RunsOnSuccess	Yes/No	Yes	Run command if JobStatus is successful
+RunsOnFailure	Yes/No	No	Run command if JobStatus isn't successful
+RunsOnClient	Yes/No	Yes	Run command on client
+RunsWhen	Before|After|Always|AfterVSS	Never	When run commands
+FailJobOnError	Yes/No	Yes	Fail job if script returns something different from 0
+Command	 	 	Path to your script
+Console	 	 	Console command
+
+ВАЖНО: В директиве Command нужно проставлять двойные кавычки и экранировать их, чтобы в итоговом конфигурационном файле bacula-dir.conf команда была в кавычках.
+
+h1. Пример JSON
+
+<pre><code>
+{
+    "run_scripts": {
+        "full_mysql_backup": {
+            "FailJobOnError": "yes",
+            "RunsWhen": "Before",
+            "Command": "\"/opt/yoursite/bacula/full_mysql_backup.sh\"",
+            "RunsOnClient": "yes"
+        },
+        "get_package_list": {
+            "FailJobOnError": "yes",
+            "RunsWhen": "Before",
+            "Command": "\"sh -c \"dpkg --get-selections >/tmp/dpkg.list\"\"",
+            "RunsOnClient": "yes"
+        },
+        "deploy_on_foreigh_server": {
+            "FailJobOnError": "no",
+            "RunsWhen": "After",
+            "Command": "\"/opt/yoursite/bacula/deploy_on_foreigh_server.sh\"",
+            "RunsOnClient": "yes"
+        }
+    },
+    "include_files": [
+        "/etc",
+        "/media/storage00",
+        "/var/spool/cron",
+        "/opt",
+        "/tmp/dpkg.list",
+        "/var/lib/dpkg/status"
+    ],
+    "director": "backup00-dir",
+    "service": "bacula-fd",
+    "schedule": {
+        "incremental": "mon-sat",
+        "time": "04:52",
+        "full": "sun"
+    },
+    "enabled": true,
+    "password": "xxx",
+    "checkfilechanges": "yes",
+    "exclude_files": [
+        "/media/storage00/var-lib-mysql",
+        "/media/storage00/var-log",
+        "/media/storage00/tmp"
+    ]
+}
+
+</pre></code>

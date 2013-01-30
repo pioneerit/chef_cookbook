@@ -1,0 +1,14 @@
+<% @clients.each do |client| -%>
+Device {
+  Name                          = FileStorage-<%= client["hostname"] %>
+  Device Type                   = File
+  Media Type                    = File-<%= client["hostname"] %>
+  Archive Device                = /backup/<%= client["hostname"] %>
+  LabelMedia                    = yes;                  # lets Bacula label unlabeled media
+  Random Access                 = Yes;
+  AutomaticMount                = yes;                  # when device opened, read it
+  RemovableMedia                = no;
+  AlwaysOpen                    = no;
+  Maximum Network Buffer Size   = 65536
+}
+<% end -%>

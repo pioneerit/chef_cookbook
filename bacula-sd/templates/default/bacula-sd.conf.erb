@@ -1,0 +1,45 @@
+Storage {
+  Name = <%= @node[:hostname] %>-sd
+  SDPort = 9103
+  WorkingDirectory = "/var/lib/bacula"
+  Pid Directory = "/var/run/bacula"
+  Maximum Concurrent Jobs = 20
+  Heartbeat Interval = 60
+}
+
+#
+# List Directors who are permitted to contact Storage daemon
+#
+Director {
+  Name = backup00-dir
+  Password = "YourPassword"
+}
+
+<% @clients.each do |client| -%>
+Device {
+  Name                          = FileStorage-<%= client[:hostname] %>
+  Device Type                   = File
+  Media Type                    = File-<%= client[:hostname] %>
+  Archive Device                = /backup/<%= client[:hostname] %>
+  LabelMedia                    = yes;                  # lets Bacula label unlabeled media
+  Random Access                 = Yes;
+  AutomaticMount                = yes;                  # when device opened, read it
+  RemovableMedia                = no;
+  AlwaysOpen                    = no;
+  Maximum Network Buffer Size   = 65536
+}
+<% end -%>
+
+# BEGIN Temp while two mgmts.
+@/etc/bacula/bacula-sd-mgmt03.conf
+# END Temp while two mgmts
+
+# 
+# Send all messages to the Director, 
+# mount messages also are sent to the email address
+#
+Messages {
+  Name = Standard
+  director = backup00-dir = all
+}
+
