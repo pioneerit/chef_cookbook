@@ -1,0 +1,1 @@
+This is the module which used when you access linux shadow password files.
