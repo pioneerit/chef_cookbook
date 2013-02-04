@@ -22,6 +22,9 @@
 # Don't do anything if we can't search
 return Chef::Log.warn('recipe[user] uses search. Chef Solo does not support search!') if Chef::Config[:solo]
 
+# Add Ruby-Shadow support
+include_recipe "ruby-shadow"
+
 # For each user with access to this node, create the account
 users = search(node['user']['data_bag'], "nodes:any OR nodes:#{node['fqdn']} OR nodes:#{node['ipaddress']}")
 users.each do |user|
