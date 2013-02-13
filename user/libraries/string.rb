@@ -1,6 +1,6 @@
 #
 # Cookbook Name:: user
-# Attributes:: default
+# Libraries:: string
 #
 # Author:: Seth Vargo <sethvargo@gmail.com>
 #
@@ -19,20 +19,11 @@
 # limitations under the License.
 #
 
-case platform
-when 'debian','ubuntu','redhat','centos','amazon','scientific','fedora','freebsd','suse'
-  default['user']['home'] = '/home'
-  default['user']['shell'] = '/bin/bash'
-when 'openbsd'
-  default['user']['home'] = '/home'
-  default['user']['shell'] = '/bin/ksh'
-when 'mac_os_x', 'mac_os_x_server'
-  default['user']['home'] = '/Users'
-  default['user']['shell'] = '/bin/bash'
-else
-  default['user']['home'] = '/home'
-  default['user']['shell'] = nil
+class String
+  # Convert a given string to a boolean
+  def to_b
+    return true if self == true || self =~ (/\A(true|t|yes|y|1)\Z/i)
+    return false if self == false || self.blank? || self =~ (/\A(false|f|no|n|0)\Z/i)
+    raise ArgumentError.new("Invalid value for Boolean: \"#{self}\"")
+  end
 end
-
-default['user']['data_bag'] = 'users'
-default['user']['ssh_key_name'] = 'id_rsa'

@@ -2,9 +2,9 @@
 # Cookbook Name:: user
 # Resource:: account
 #
-# Author:: Fletcher Nichol <fnichol@nichol.ca>
+# Author:: Seth Vargo <sethvargo@gmail.com>
 #
-# Copyright 2011, Fletcher Nichol
+# Copyright 2011, Seth Vargo
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,22 +19,24 @@
 # limitations under the License.
 #
 
-actions :create, :remove, :modify, :manage, :lock, :unlock
+actions :manage
+default_action :manage
 
 attribute :username,      :kind_of => String, :name_attribute => true
 attribute :comment,       :kind_of => String
-attribute :uid,           :kind_of => [String,Integer]
-attribute :gid,           :kind_of => [String,Integer]
+attribute :uid,           :kind_of => [Integer, String], :required => true
+attribute :gid,           :kind_of => [Integer, String]
+attribute :groups,        :kind_of => [Array, String], :default => []
 attribute :home,          :kind_of => String
 attribute :shell,         :kind_of => String
 attribute :password,      :kind_of => String
-attribute :system_user,   :default => false
-attribute :manage_home,   :default => nil
-attribute :create_group,  :default => nil
-attribute :ssh_keys,      :kind_of => [Array,String], :default => []
-attribute :ssh_keygen,    :default => nil
+attribute :system,        :kind_of => [TrueClass, FalseClass], :default => false
+attribute :ssh_keys,      :kind_of => [Array, String], :default => []
+attribute :sudo,          :kind_of => [TrueClass, FalseClass], :default => false
+attribute :nodes,         :kind_of => [Array, String], :default => 'any'
+attribute :enabled,       :kind_of => [TrueClass, FalseClass], :default => true
 
 def initialize(*args)
   super
-  @action = :create
+  @action = :manage
 end
