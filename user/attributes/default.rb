@@ -2,9 +2,9 @@
 # Cookbook Name:: user
 # Attributes:: default
 #
-# Author:: Seth Vargo <sethvargo@gmail.com>
+# Author:: Fletcher Nichol <fnichol@nichol.ca>
 #
-# Copyright 2012, Seth Vargo
+# Copyright 2011, Fletcher Nichol
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,18 +21,22 @@
 
 case platform
 when 'debian','ubuntu','redhat','centos','amazon','scientific','fedora','freebsd','suse'
-  default['user']['home'] = '/home'
-  default['user']['shell'] = '/bin/bash'
+  default['user']['home_root']      = "/home"
+  default['user']['default_shell']  = "/bin/bash"
 when 'openbsd'
-  default['user']['home'] = '/home'
-  default['user']['shell'] = '/bin/ksh'
+  default['user']['home_root']      = "/home"
+  default['user']['default_shell']  = "/bin/ksh"
 when 'mac_os_x', 'mac_os_x_server'
-  default['user']['home'] = '/Users'
-  default['user']['shell'] = '/bin/bash'
+  default['user']['home_root']      = "/Users"
+  default['user']['default_shell']  = "/bin/bash"
 else
-  default['user']['home'] = '/home'
-  default['user']['shell'] = nil
+  default['user']['home_root']      = "/home"
+  default['user']['default_shell']  = nil
 end
 
-default['user']['data_bag'] = 'users'
-default['user']['ssh_key_name'] = 'id_rsa'
+default['user']['manage_home']        = "true"
+default['user']['create_user_group']  = "true"
+default['user']['ssh_keygen']         = "true"
+
+default['user']['data_bag_name']        = "users"
+default['user']['user_array_node_attr'] = "users"

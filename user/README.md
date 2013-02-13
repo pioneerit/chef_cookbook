@@ -1,188 +1,373 @@
-Chef user cookbook
-==================
-The Chef `user` cookbook provides and LWRP for creating users. The default recipe also creates users from a data_bag.
+# <a name="title"></a> chef-user [![Build Status](https://secure.travis-ci.org/fnichol/chef-user.png?branch=master)](http://travis-ci.org/fnichol/chef-user)
 
-Requirements
-------------
-The platform supports the Chef `user` directive.
+## <a name="description"></a> Description
 
-Attributes
-----------
-- `node['user']['home']` - the default path to user's home directory (default: OS default)
-- `node['user']['shell']` - the default shell (default: OS default)
-- `node['user']['data_bag']` - the name of the data_bag to use (default: `users`)
-- `node['user']['ssh_key_name']` - the name of the ssh key (default: `id_rsa`)
+A convenient Chef LWRP to manage user accounts and SSH keys. This is **not**
+the Opscode *users* cookbook.
 
-Usage
------
-#### Attributes
-To use attributes for defining users, create a users data_bag:
+* Github: https://github.com/fnichol/chef-user
+* Opscode Community Site: http://community.opscode.com/cookbooks/user
 
-```json
-// data_bags/users/svargo.json
-{
-  "id": "svargo",
-  "uid": "1000",
-  "deploy": "any",
-  ssh_keys: [...]
-}
-```
+## <a name="usage"></a> Usage
 
-#### LWRP
-Examples using this LWRP:
+Simply include `recipe[user]` in your run\_list and the `user_account`
+resource will be available.
 
-Basic use, create an account:
-```ruby
-user_account 'svargo' do
-  ssh_keys [ 'ssh-rsa ...' ]
-end
-```
+To use `recipe[user::data_bag]`, include it in your run\_list and have a
+data bag called `"users"` with an item like the following:
 
-Create a user, specifying uid, primary group id, groups, ssh_keys, sudo privileges, and a list of nodes to create this user on.
-```ruby
-user_account 'svargo' do
-  comment      'This is a user'
-  uid          1234
-  gid          4321
-  groups       [ 'sysadmin', 'developers' ]
-  ssh_keys     [ 'ssh-rsa ...' ]
-  sudo         true
-  nodes        'any'
-end
-```
+    {
+      "id"        : "hsolo",
+      "comment"   : "Han Solo",
+      "home"      : "/opt/hoth/hsolo",
+      "ssh_keys"  : ["123...", "456..."]
+    }
 
-##### LWRP Attributes
+or a user to be removed:
+
+    {
+      "id"      : "lando",
+      "action"  : "remove"
+    }
+
+The data bag recipe will iterate through a list of usernames defined in
+`node['users']` (by default) and attempt to pull in the user's information
+from the data bag item. In other words, having:
+
+    node['users'] = ['hsolo']
+
+will set up the `hsolo` user information and not use the `lando` user
+information.
+
+## <a name="requirements"></a> Requirements
+
+### <a name="requirements-chef"></a> Chef
+
+Tested on 0.10.8 but newer and older version should work just fine. File an
+[issue][issues] if this isn't the case.
+
+### <a name="requirements-platform"></a> Platform
+
+The following platforms have been tested with this cookbook, meaning that the
+recipes run on these platforms without error:
+
+* ubuntu
+* debian
+* mac_os_x
+
+### <a name="requirements-cookbooks"></a> Cookbooks
+
+There are **no** external cookbook dependencies.
+
+## <a name="installation"></a> Installation
+
+Depending on the situation and use case there are several ways to install
+this cookbook. All the methods listed below assume a tagged version release
+is the target, but omit the tags to get the head of development. A valid
+Chef repository structure like the [Opscode repo][chef_repo] is also assumed.
+
+### <a name="installation-platform"></a> From the Opscode Community Platform
+
+To install this cookbook from the Opscode platform, use the *knife* command:
+
+    knife cookbook site install user
+
+### <a name="installation-librarian"></a> Using Librarian-Chef
+
+[Librarian-Chef][librarian] is a bundler for your Chef cookbooks.
+Include a reference to the cookbook in a [Cheffile][cheffile] and run
+`librarian-chef install`. To install Librarian-Chef:
+
+    gem install librarian
+    cd chef-repo
+    librarian-chef init
+
+To use the Opscode platform version:
+
+    echo "cookbook 'user'" >> Cheffile
+    librarian-chef install
+
+Or to reference the Git version:
+
+    cat >> Cheffile <<END_OF_CHEFFILE
+    cookbook 'user',
+      :git => 'git://github.com/fnichol/chef-user.git', :ref => 'v0.3.0'
+    END_OF_CHEFFILE
+    librarian-chef install
+
+### <a name="installation-kgc"></a> Using knife-github-cookbooks
+
+The [knife-github-cookbooks][kgc] gem is a plugin for *knife* that supports
+installing cookbooks directly from a GitHub repository. To install with the
+plugin:
+
+    gem install knife-github-cookbooks
+    cd chef-repo
+    knife cookbook github install fnichol/chef-user/v0.3.0
+
+### <a name="installation-gitsubmodule"></a> As a Git Submodule
+
+A common practice (which is getting dated) is to add cookbooks as Git
+submodules. This is accomplishes like so:
+
+    cd chef-repo
+    git submodule add git://github.com/fnichol/chef-user.git cookbooks/user
+    git submodule init && git submodule update
+
+**Note:** the head of development will be linked here, not a tagged release.
+
+### <a name="installation-tarball"></a> As a Tarball
+
+If the cookbook needs to downloaded temporarily just to be uploaded to a Chef
+Server or Opscode Hosted Chef, then a tarball installation might fit the bill:
+
+    cd chef-repo/cookbooks
+    curl -Ls https://github.com/fnichol/chef-user/tarball/v0.3.0 | tar xfz - && \
+      mv fnichol-chef-user-* user
+
+## <a name="recipes"></a> Recipes
+
+### <a name="recipes-default"></a> default
+
+This recipe is a no-op and does nothing.
+
+### <a name="recipes-data-bag"></a> default
+
+Processes a list of users with data drawn from a data bag. The default data bag
+is `users` and the list of user account to create on this node is set on
+`node['users']`.
+
+## <a name="attributes"></a> Attributes
+
+### <a name="attributes-home-root"></a> home_root
+
+The default parent path of a user's home directory. Each resource can override
+this value which varies by platform. Generally speaking, the default value is
+`"/home"`.
+
+### <a name="attributes-default-shell"></a> default_shell
+
+The default user shell given to a user. Each resource can override this value
+which varies by platform. Generally speaking, the default value is
+`"/bin/bash"`.
+
+### <a name="attributes-manage-home"></a> manage_home
+
+Whether of not to manage the home directory of a user by default. Each resource
+can override this value. The are 2 valid states:
+
+* `"true"`, `true`, or `"yes"`: will manage the user's home directory.
+* `"false"`, `false`, or `"no"`: will not manage the user's home directory.
+
+The default is `true`.
+
+### <a name="attributes-create-user-group"></a> create_user_group
+
+Whether or not to to create a group with the same name as the user by default.
+Each resource can override this value. The are 2 valid states:
+
+* `"true"`, `true`, or `"yes"`: will create a group for the user by default.
+* `"false"`, `false`, or `"no"`: will not create a group for the user by default.
+
+The default is `true`.
+
+### <a name="attributes-ssh-keygen"></a> ssh_keygen
+
+Whether or not to generate an SSH keypair for the user by default. Each
+resource can override this value. There are 2 valid states:
+
+* `"true"`, `true`, or `"yes"`: will generate an SSH keypair when the account
+  is created.
+* `"false"`, `false`, or `"no"`: will not generate an SSH keypair when the account
+  is created.
+
+The default is `true`.
+
+### <a name="attributes-data-bag-name"></a> data_bag_name
+
+The data bag name containing a group of user account information. This is used
+by the `data_bag` recipe to use as a database of user accounts.
+
+The default is `"users"`.
+
+### <a name="attributes-user-array-node-attr"></a> user_array_node_attr
+
+The node attributes containing an array of users to be managed. If a nested
+hash in the node's attributes is required, then use a `/` between subhashes.
+For example, if the users' array is stored in `node['system']['accounts']`),
+then set `node['user']['user_array_node_attr']` to `"system/accounts"`.
+
+The default is `"users"`.
+
+## <a name="lwrps"></a> Resources and Providers
+
+### <a name="lwrps-ua"></a> user_account
+
+**Note:** in order to use the `password` attribute, you must have the
+[ruby-shadow gem][ruby-shadow_gem] installed. On Debian/Ubuntu you can get
+this by installing the "libshadow-ruby1.8" package.
+
+### <a name="lwrps-ua-actions"></a> Actions
+
+<table>
+  <thead>
+    <tr>
+      <th>Action</th>
+      <th>Description</th>
+      <th>Default</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>create</td>
+      <td>
+        Create the user, its home directory, <code>.ssh/authorized_keys</code>,
+        and <code>.ssh/{id_dsa,id_dsa.pub}</code>.
+      </td>
+      <td>Yes</td>
+    </tr>
+    <tr>
+      <td>remove</td>
+      <td>Remove the user account.</td>
+      <td>&nbsp;</td>
+    </tr>
+    <tr>
+      <td>modify</td>
+      <td>Modiy the user account.</td>
+      <td>&nbsp;</td>
+    </tr>
+    <tr>
+      <td>manage</td>
+      <td>Manage the user account.</td>
+      <td>&nbsp;</td>
+    </tr>
+    <tr>
+      <td>lock</td>
+      <td>Lock the user's password.</td>
+      <td>&nbsp;</td>
+    </tr>
+    <tr>
+      <td>unlock</td>
+      <td>Unlock the user's password.</td>
+      <td>&nbsp;</td>
+    </tr>
+  </tbody>
+</table>
+
+### <a name="lwrps-ua-attributes"></a> Attributes
+
 <table>
   <thead>
     <tr>
       <th>Attribute</th>
       <th>Description</th>
-      <th>Example</th>
-      <th>Default</th>
+      <th>Default Value</th>
     </tr>
   </thead>
-
   <tbody>
     <tr>
       <td>username</td>
-      <td>the username for this user</td>
-      <td><tt>svargo</tt></td>
-      <td></td>
+      <td><b>Name attribute:</b> The name of the user.</td>
+      <td><code>nil</code></td>
     </tr>
     <tr>
       <td>comment</td>
-      <td>a description for this user</td>
-      <td><tt>left Company on 12/12/12</tt></td>
-      <td></td>
+      <td>Gecos/Comment field.</td>
+      <td><code>nil</code></td>
     </tr>
     <tr>
       <td>uid</td>
-      <td>the UNIX uid of this user</td>
-      <td><tt>1234</tt></td>
-      <td>(varies)</td>
+      <td>The numeric user id.</td>
+      <td><code>nil</code></td>
     </tr>
     <tr>
       <td>gid</td>
-      <td>the primary group id for this user</td>
-      <td><tt>4321</tt></td>
-      <td><tt></tt></td>
-    </tr>
-    <tr>
-      <td>groups</td>
-      <td>the groups this user should belong to<br><br>if the groups don't yet exist, they will be created</td>
-      <td><tt>[ 'sysadmins' ]</tt></td>
-      <td><tt>[]</tt></td>
+      <td>The primary group id.</td>
+      <td><code>nil</code></td>
     </tr>
     <tr>
       <td>home</td>
-      <td>the path to this user's home directory</td>
-      <td><tt>/home/svargo</tt></td>
-      <td>(varies based on OS)</td>
+      <td>Home directory location.</td>
+      <td><code>"#{node['user']['home_root']}/#{username}</code></td>
     </tr>
     <tr>
       <td>shell</td>
-      <td>the shell for this user</td>
-      <td><tt>/bin/bash</tt></td>
-      <td>(varies based on OS)</td>
+      <td>The login shell.</td>
+      <td><code>node['user']['default_shell']</code></td>
     </tr>
     <tr>
       <td>password</td>
-      <td>the password for this user<br><br>see the Opscode user docs for more information.</td>
-      <td><tt>ajdafk$2902da24</tt></td>
-      <td></td>
+      <td>Shadow hash of password.</td>
+      <td><code>nil</code></td>
     </tr>
     <tr>
-      <td>system</td>
-      <td>create this user as a system account</td>
-      <td><tt>true</tt></td>
-      <td>false</td>
+      <td>system_user</td>
+      <td>Whether or not to create a system user.</td>
+      <td><code>false</code></td>
+    </tr>
+    <tr>
+      <td>manage_home</td>
+      <td>Whether or not to manage the home directory.</td>
+      <td><code>true</code></td>
+    </tr>
+    <tr>
+      <td>create_group</td>
+      <td>
+        Whether or not to to create a group with the same name as the user.
+      </td>
+      <td><code>node['user']['create_group']</code></td>
     </tr>
     <tr>
       <td>ssh_keys</td>
-      <td>array of ssh_keys for this user</td>
-      <td><tt>[ 'ssh-rsa ...' ]</tt></td>
-      <td></td>
+      <td>
+        A <b>String</b> or <b>Array</b> of SSH public keys to populate the
+        user's <code>.ssh/authorized_keys</code> file.
+      </td>
+      <td><code>[]</code></td>
     </tr>
     <tr>
-      <td>sudo</td>
-      <td>give this user sudo rights<br><br>for more control over sudo commands and privileges, check out the [sudo cookbook](https://github.com/opscode-cookbooks/sudo).</td>
-      <td><tt>true</tt></td>
-      <td>false</td>
-    </tr>
-    <tr>
-      <td>nodes</td>
-      <td>array of nodes (IPs or FQDNs) this user should be created on</td>
-      <td><tt>[ '1.2.3.4', 'mynode.example.com' ]</tt></td>
-      <td>'any'</td>
-    </tr>
-    <tr>
-      <td>enabled</td>
-      <td>boolean if this user is enabled<br><br>if the user is not enabled, the account will be `locked` on the server</td>
-      <td><tt>false</tt></td>
-      <td>true</td>
+      <td>ssh_keygen</td>
+      <td>Whether or not to generate an SSH keypair for the user.</td>
+      <td><code>node['user']['ssh_keygen']</code></td>
     </tr>
   </tbody>
 </table>
 
-Usage
------
-If you're using [Berkshelf](http://berkshelf.com/), just add `user` to your `Berksfile`:
+#### <a name="lwrps-ua-examples"></a> Examples
 
-```ruby
-cookbook 'user'
-```
+##### Creating a User Account
 
-Otherwise, install the cookbook from the community site:
+    user_account 'hsolo' do
+      comment   'Han Solo'
+      ssh_keys  ['3dc348d9af8027df7b9c...', '2154d3734d609eb5c452...']
+      home      '/opt/hoth/hsolo'
+    end
 
-    knife cookbook site install user
+##### Locking a User Account
 
-Have any other cookbooks *depend* on user by editing editing the `metadata.rb` for your cookbook.
+    user_account 'lando' do
+      action  :lock
+    end
 
-```ruby
-depends 'user'
-```
+##### Removing a User account
 
-Once you have the cookbook installed, add it to your node's `run_list` or `role`:
+    user_account 'obiwan' do
+      action  :remove
+    end
 
-```ruby
-"run_list": [
-  "recipe[user]"
-]
-```
+## <a name="development"></a> Development
 
-Contributing
-------------
-1. Fork the project
-2. Create a feature branch corresponding to you change
-3. Commit and test thoroughly
-4. Create a Pull Request on github
-    - ensure you add a detailed description of your changes
+* Source hosted at [GitHub][repo]
+* Report issues/Questions/Feature requests on [GitHub Issues][issues]
 
-License and Authors
--------------------
-- Author:: Seth Vargo (sethvargo@gmail.com)
+Pull requests are very welcome! Make sure your patches are well tested.
+Ideally create a topic branch for every separate change you make.
 
-Copyright 2012, Seth Vargo
+## <a name="license"></a> License and Author
+
+Author:: [Fletcher Nichol][fnichol] (<fnichol@nichol.ca>) [![endorse](http://api.coderwall.com/fnichol/endorsecount.png)](http://coderwall.com/fnichol)
+
+Copyright 2011, Fletcher Nichol
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -195,3 +380,12 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
+
+[chef_repo]:    https://github.com/opscode/chef-repo
+[cheffile]:     https://github.com/applicationsonline/librarian/blob/master/lib/librarian/chef/templates/Cheffile
+[kgc]:          https://github.com/websterclay/knife-github-cookbooks#readme
+[librarian]:    https://github.com/applicationsonline/librarian#readme
+[ruby-shadow_gem]:  https://rubygems.org/gems/ruby-shadow
+
+[repo]:         https://github.com/fnichol/chef-user
+[issues]:       https://github.com/fnichol/chef-user/issues
