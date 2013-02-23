@@ -161,7 +161,7 @@ class Chef
         #
 
         # only take action if the service is running
-        [:down, :hup, :int, :term, :kill].each do |signal|
+        [:down, :hup, :int, :term, :kill, :quit].each do |signal|
           define_method "action_#{signal}".to_sym do
             if @current_resource.running
               runit_send_signal(signal)
@@ -247,7 +247,7 @@ EOF
           @run_script = Chef::Resource::Template.new(::File.join(sv_dir_name, 'run'), run_context)
           @run_script.owner(new_resource.owner)
           @run_script.group(new_resource.group)
-          @run_script.source("sv-#{new_resource.service_name}-run.erb")
+          @run_script.source("sv-#{new_resource.run_template_name}-run.erb")
           @run_script.cookbook(template_cookbook)
           @run_script.mode(00755)
           if new_resource.options.respond_to?(:has_key?)
