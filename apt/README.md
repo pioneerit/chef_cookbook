@@ -90,6 +90,7 @@ resource immediately.
 - key: if a `keyserver` is provided, this is assumed to be the
   fingerprint, otherwise it can be either the URI to the GPG key for
   the repo, or a cookbook_file.
+- key_proxy: if set, pass the specified proxy via `http-proxy=` to GPG.
 - cookbook: if key should be a cookbook_file, specify a cookbook where
   the key is located for files/default. Defaults to nil, so it will
   use the cookbook where the resource is used.
@@ -169,6 +170,7 @@ http://wiki.debian.org/AptPreferences.
 # Attribute Parameters
 
 - package_name: name attribute. The name of the package
+- glob: Pin by glob() expression or regexp surrounded by /.
 - pin: The package version/repository to pin
 - pin_priority: The pinning priority aka "the highest package version wins"
 
@@ -183,6 +185,13 @@ http://wiki.debian.org/AptPreferences.
     # Unpin libmysqlclient16
     apt_preference "libmysqlclient16" do
       action :remove
+    end
+
+    # Pin all packages from dotdeb.org
+    apt_preference "dotdeb" do
+      glob "*"
+      pin "origin packages.dotdeb.org "
+      pin_priority "700"
     end
 
 Usage
