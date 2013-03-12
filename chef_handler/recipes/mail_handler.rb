@@ -1,7 +1,7 @@
 #
 # Author:: Seth Chisamore (<schisamo@opscode.com>)
 # Cookbook Name:: chef_handlers
-# Recipe:: default
+# Recipe:: json_file
 #
 # Copyright 2011, Opscode, Inc.
 #
@@ -18,20 +18,15 @@
 # limitations under the License.
 #
 
-require "rubygems"
-
-Chef::Log.info("Chef Handlers will be at: #{node['chef_handler']['handler_path']}")
-
-remote_directory node['chef_handler']['handler_path'] do
-  source 'handlers'
-  # Just inherit permissions on Windows, don't try to set POSIX perms
-  if node["platform"] != "windows"
-    owner node['chef_handler']['root_user']
-    group node['chef_handler']['root_group']
-    mode "0755"
-    recursive true
-  end
+# force resource actions in compile phase so exception handler 
+# fires for compile phase exceptions
+gem_package "pony" do
   action :nothing
-end.run_action(:create)
+end.run_action(:install)
 
-include_recipe "chef_handler::mail_handler"
+chef_handler "MailHandler" do
+  source "#{node['chef_handler']['handler_path']}/mail"
+  arguments :path => '/var/chef/reports'
+  supports :exception => true
+  action :nothing
+end.run_action(:enable)
