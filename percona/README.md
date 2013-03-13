@@ -7,7 +7,7 @@ Installs the [Percona MySQL](http://www.percona.com/software/percona-server) cli
 * [XtraBackup](http://www.percona.com/software/percona-xtrabackup/) hot backup software
 * [Percona Toolkit](http://www.percona.com/software/percona-toolkit/) advanced command-line tools
 * [XtraDB Cluster](http://www.percona.com/software/percona-xtradb-cluster/) high availability and high scalability solution for MySQL
-
+* [Percona Monitoring Plugins](http://www.percona.com/software/percona-monitoring-plugins) various Nagios plugins for monitoring MySQL
 
 ## Requirements
 
@@ -47,7 +47,7 @@ It is recommended to use a version of Chef `>= 10.16.4` as that is the target of
 * `percona::configure_server` - Used internally to manage the server configuration.
 * `percona::replication` - Used internally to grant permissions for replication.
 * `percona::access_grants` - Used internally to grant permissions for recipes.
-
+* `percona::monitoring` - Installs Percona monitoring plugins for Nagios
 
 ## Usage
 
@@ -91,6 +91,9 @@ Above shows the encrypted password in the data bag. Check out the `encrypted_dat
 ## Attributes
 
 ```ruby
+# Always restart percona on configuration changes
+default["percona"]["auto_restart"] = true
+
 case node["platform_family"]
 when "debian"
   default["percona"]["server"]["socket"]                        = "/var/run/mysqld/mysqld.sock"
@@ -217,6 +220,15 @@ default["percona"]["cluster"]["innodb_locks_unsafe_for_binlog"] = 1
 default["percona"]["cluster"]["innodb_autoinc_lock_mode"]       = 2
 ```
 
+### Monitoring.rb
+
+```ruby
+default['percona']['plugins_url'] = "http://www.percona.com/downloads/percona-monitoring-plugins/"
+default['percona']['plugins_version'] = "1.0.2"
+default['percona']['plugins_sha'] = "da84cfe89637292da15ddb1e66f67ad9703fa21392d8d49e664ad08f7aa45585"
+default['percona']['plugins_path'] = "/opt/pmp"
+```
+
 ## Explicit my.cnf templating
 
 In some situation it is preferable to explicitly define the attributes needed in a `my.cnf` file. This is enabled by adding categories to the `node[:percona][:conf]` attributes. All keys found in the `node[:percona][:conf]` map will represent categories in the `my.cnf` file. Each category contains a map of attributes that will be written to the `my.cnf` file for that category. See the example for more details.
@@ -295,6 +307,7 @@ Many thanks go to the following [contributors](https://github.com/phlipper/chef-
 * **[@TheSerapher](https://github.com/TheSerapher)**
     * improvements for master/slave replication setup
     * updates and clarifications to the README
+    * add attribute to control server restart on config changes
 * **[@bensomers](https://github.com/bensomers)**
     * minor fixes to `replication.sql`
     * fix a very dangerous bug around binlog-do-db setting for slave servers
@@ -305,13 +318,24 @@ Many thanks go to the following [contributors](https://github.com/phlipper/chef-
     * avoid re-installation of packages RedHat platforms
 * **[@vinu](https://github.com/vinu)**
     * pin the percona apt repo with high priority
+* **[@ckuttruff](https://github.com/ckuttruff)**
+    * improve security on debian-based systems by changing config file permissions
+    * don't pass mysql root password in plaintext commands
+* **[@srodrig0209](https://github.com/srodrig0209)**
+    * add the `monitoring` recipe
+* **[@jesseadams](https://github.com/jesseadams)**
+    * fixes for custom datadir setting use case
+* **[@see0](https://github.com/see0)**
+    * fix incorrect root password reference
+* **[@baldur](https://github.com/baldur)**
+    * _(honorable mention)_ fix incorrect root password reference
 
 
 ## License
 
 Author:: Phil Cohen (<github@phlippers.net>) [![endorse](http://api.coderwall.com/phlipper/endorsecount.png)](http://coderwall.com/phlipper)
 
-Copyright:: 2011-2012, Phil Cohen
+Copyright:: 2011-2013, Phil Cohen
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
