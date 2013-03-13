@@ -6,6 +6,14 @@ mysqld  = (conf && conf["mysqld"]) || {}
 # construct an encrypted passwords helper -- giving it the node and bag name
 passwords = EncryptedPasswords.new(node, percona["encrypted_data_bag"])
 
+template "/root/.my.cnf" do
+  variables( :root_password => passwords.root_password )
+  owner 'root'
+  group 'root'
+  mode '600'
+  source 'my.cnf.root.erb'
+end
+
 if server['bind_to']
   ipaddr = Percona::ConfigHelper.bind_to(node, server['bind_to'])
   if ipaddr && server['bind_address'] != ipaddr
@@ -35,15 +43,6 @@ directory "/etc/mysql" do
   mode 0755
 end
 
-# setup the main server config file
-template percona["main_config_file"] do
-  source "my.cnf.#{conf ? "custom" : server["role"]}.erb"
-  owner "root"
-  group "root"
-  mode 0744
-  notifies :restart, "service[mysql]", :immediately
-end
-
 # setup the data directory
 directory datadir do
   owner user
@@ -52,16 +51,25 @@ directory datadir do
   action :create
 end
 
-# now let's set the root password only if this is the initial install
-execute "Update MySQL root password" do
-  command "mysqladmin -u root password '#{passwords.root_password}'"
-  not_if "test -f /etc/mysql/grants.sql"
-end
-
 # install db to the data directory
 execute "setup mysql datadir" do
   command "mysql_install_db --user=#{user} --datadir=#{datadir}"
   not_if "test -f #{datadir}/mysql/user.frm"
+end
+
+# setup the main server config file
+template percona["main_config_file"] do
+  source "my.cnf.#{conf ? "custom" : server["role"]}.erb"
+  owner "root"
+  group "root"
+  mode 0744
+  notifies :restart, "service[mysql]", :immediately if node["percona"]["auto_restart"]
+end
+
+# now let's set the root password only if this is the initial install
+execute "Update MySQL root password" do
+  command "mysqladmin -u root -p'' password '#{passwords.root_password}'"
+  not_if "test -f /etc/mysql/grants.sql"
 end
 
 # setup the debian system user config
@@ -70,8 +78,8 @@ template "/etc/mysql/debian.cnf" do
   variables(:debian_password => passwords.debian_password)
   owner "root"
   group "root"
-  mode 0744
-  notifies :restart, "service[mysql]", :immediately
+  mode 0640
+  notifies :restart, "service[mysql]", :immediately if node["percona"]["auto_restart"]
 
   only_if { node["platform_family"] == "debian" }
 end
