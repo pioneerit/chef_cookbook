@@ -112,6 +112,9 @@ default["percona"]["main_config_file"]                          = "/etc/my.cnf"
 default["percona"]["keyserver"]                                 = "keys.gnupg.net"
 default["percona"]["encrypted_data_bag"]                        = "passwords"
 
+# Start percona server on boot
+default["percona"]["server"]["enable"]                          = true
+
 # Basic Settings
 default["percona"]["server"]["role"]                            = "standalone"
 default["percona"]["server"]["username"]                        = "mysql"
@@ -321,6 +324,7 @@ Many thanks go to the following [contributors](https://github.com/phlipper/chef-
 * **[@ckuttruff](https://github.com/ckuttruff)**
     * improve security on debian-based systems by changing config file permissions
     * don't pass mysql root password in plaintext commands
+    * fix issue with -p flag when setting initial password
 * **[@srodrig0209](https://github.com/srodrig0209)**
     * add the `monitoring` recipe
 * **[@jesseadams](https://github.com/jesseadams)**
@@ -329,6 +333,10 @@ Many thanks go to the following [contributors](https://github.com/phlipper/chef-
     * fix incorrect root password reference
 * **[@baldur](https://github.com/baldur)**
     * _(honorable mention)_ fix incorrect root password reference
+* **[@chrisroberts](https://github.com/chrisroberts)**
+    * _(honorable mention)_ fix issue with -p flag when setting initial password
+* **[@aaronjensen](https://github.com/aaronjensen)**
+    * allow server to not be started on startup
 
 
 ## License

@@ -33,7 +33,7 @@ user    = mysqld["user"] || server["user"]
 # define the service
 service "mysql" do
   supports :restart => true
-  action :enable
+  action server["enable"] ? :enable : :disable
 end
 
 # this is where we dump sql templates for replication, etc.
@@ -68,7 +68,7 @@ end
 
 # now let's set the root password only if this is the initial install
 execute "Update MySQL root password" do
-  command "mysqladmin -u root -p'' password '#{passwords.root_password}'"
+  command "mysqladmin --user=root --password='' password '#{passwords.root_password}'"
   not_if "test -f /etc/mysql/grants.sql"
 end
 
